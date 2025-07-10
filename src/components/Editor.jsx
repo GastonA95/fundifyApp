@@ -16,22 +16,20 @@ const Editor = ({ model, userImage, userText }) => {
   const trRef = useRef(null);
 
   const [showFundaControls, setShowFundaControls] = useState(false);
-  const [isFundaHovered, setIsFundaHovered] = useState(false); // Estado para el hover de la funda
+  const [isFundaHovered, setIsFundaHovered] = useState(false);
 
   const fundaKonvaImageRef = useRef(null);
   const userImageNodeRef = useRef(null);
   const userTextNodeRef = useRef(null);
 
-  // Estados para controlar la escala y rotación del objeto SELECCIONADO
-  // Aseguramos que `selectedScale` y `selectedRotation` se inicialicen correctamente
   const [selectedScale, setSelectedScale] = useState(1);
   const [selectedRotation, setSelectedRotation] = useState(0);
-  const [selectedPosition, setSelectedPosition] = useState({ x: 0, y: 0 }); // Posición del elemento seleccionado
+  const [selectedPosition, setSelectedPosition] = useState({ x: 0, y: 0 });
 
   const STAGE_WIDTH = 300;
   const STAGE_HEIGHT = 600;
 
-  // Efecto para cargar la imagen de la funda (la plantilla)
+  // Efecto para cargar la imagen de la funda (la plantilla base)
   useEffect(() => {
     if (model && model.imagen) {
       const imageUrl = `${window.location.origin}${model.imagen}`;
@@ -48,7 +46,7 @@ const Editor = ({ model, userImage, userText }) => {
     }
   }, [model]);
 
-  // Efecto para cargar la imagen subida por el usuario
+  // Efecto para cargar la imagen subida por el usuario y posicionarla/escalarla
   useEffect(() => {
     if (userImage) {
       console.log("Konva: Cargando imagen de usuario desde:", userImage);
@@ -66,13 +64,14 @@ const Editor = ({ model, userImage, userText }) => {
         setSelectedPosition({ x: initialProps.x, y: initialProps.y });
 
         // Si el nodo ya está renderizado, aplicar las propiedades inmediatamente.
-        // Esto evita un "parpadeo" antes de que React actualice el componente.
         if (userImageNodeRef.current) {
           userImageNodeRef.current.x(initialProps.x);
           userImageNodeRef.current.y(initialProps.y);
           userImageNodeRef.current.scaleX(initialProps.scale);
           userImageNodeRef.current.scaleY(initialProps.scale);
           userImageNodeRef.current.rotation(0);
+          userImageNodeRef.current.offsetX(img.width / 2); // Establecer offset al centro para rotación/escala
+          userImageNodeRef.current.offsetY(img.height / 2); // Establecer offset al centro para rotación/escala
           userImageNodeRef.current.getLayer().batchDraw(); // Forzar redibujado
         }
       };
@@ -95,11 +94,11 @@ const Editor = ({ model, userImage, userText }) => {
   // Función para calcular las propiedades iniciales de la imagen para que "cubra" el área
   const calculateInitialImagePropsToCover = (img) => {
     // Estas son las dimensiones ESTIMADAS del área que la imagen debe cubrir en el Stage.
-    // Basado en las imágenes, ajusta estos porcentajes para que la imagen cubra
+    // AJUSTA ESTOS PORCENTAJES (o valores fijos) para que la imagen cubra
     // el área blanca de tu funda perfectamente al cargar.
-    // Los valores 0.7 y 0.9 son una estimación, ajústalos según la forma de tu funda.
-    const caseUsableWidth = STAGE_WIDTH * 0.7; // Ancho aproximado del área de diseño
-    const caseUsableHeight = STAGE_HEIGHT * 0.9; // Alto aproximado del área de diseño
+    // Los valores son ejemplos y pueden necesitar ajuste.
+    const caseUsableWidth = STAGE_WIDTH * 1.0; // Usaste 1.0 manualmente, lo mantengo aquí
+    const caseUsableHeight = STAGE_HEIGHT * 1.0; // Usaste 1.0 manualmente, lo mantengo aquí
 
     const imageAspectRatio = img.width / img.height;
     const targetAspectRatio = caseUsableWidth / caseUsableHeight;
@@ -114,18 +113,15 @@ const Editor = ({ model, userImage, userText }) => {
       finalScale = caseUsableWidth / img.width;
     }
 
-    // Calcular las dimensiones finales de la imagen con esta escala
-    const finalImageWidth = img.width * finalScale;
-    const finalImageHeight = img.height * finalScale;
-
     // Centrar la imagen escalada en el centro del STAGE
-    const x = (STAGE_WIDTH - finalImageWidth) / 2;
-    const y = (STAGE_HEIGHT - finalImageHeight) / 2;
+    // Ahora que usamos offset para centrar el pivote, las coordenadas x, y
+    // deben ser el centro del stage.
+    const x = STAGE_WIDTH / 2;
+    const y = STAGE_HEIGHT / 2;
 
     return { scale: finalScale, x, y };
   };
 
-  // Función para escalar y centrar la imagen de la funda (la plantilla)
   // Función para escalar y centrar la imagen de la funda (la plantilla)
   const getFundaImageProps = () => {
     if (!fundaImage) return {};
@@ -136,7 +132,7 @@ const Editor = ({ model, userImage, userText }) => {
       newWidth = STAGE_WIDTH;
       newHeight = STAGE_WIDTH / imageAspectRatio;
     } else {
-      newHeight = STAGE_HEIGHT; // <--- Línea corregida
+      newHeight = STAGE_HEIGHT;
       newWidth = STAGE_HEIGHT * imageAspectRatio;
     }
     return {
@@ -145,14 +141,14 @@ const Editor = ({ model, userImage, userText }) => {
       height: newHeight,
       x: (STAGE_WIDTH - newWidth) / 2,
       y: (STAGE_HEIGHT - newHeight) / 2,
-      listening: true, // Debe escuchar eventos
-      name: "fundaImage", // Nombre para identificarla
+      listening: true,
+      name: "fundaImage",
       // Efecto de hover: ligeramente transparente y con un tinte si está en hover
       filters: isFundaHovered ? [window.Konva.Filters.RGBA] : [],
-      red: isFundaHovered ? 255 : 0,
-      green: isFundaHovered ? 255 : 0,
-      blue: isFundaHovered ? 255 : 0,
-      alpha: isFundaHovered ? 0.2 : 0, // Ajusta la opacidad para el efecto visual
+      red: isFundaHovered ? 150 : 0, // Ajuste de color para el hover
+      green: isFundaHovered ? 150 : 0,
+      blue: isFundaHovered ? 200 : 0,
+      alpha: isFundaHovered ? 0.6 : 0, // Aumenta la opacidad para que sea más visible
     };
   };
 
@@ -170,8 +166,6 @@ const Editor = ({ model, userImage, userText }) => {
 
       if (nodeToAttach) {
         trRef.current.nodes([nodeToAttach]);
-        // Asegurarse de que el transformer se inicialice con los valores actuales del nodo
-        // (Esto ya se hace implícitamente, pero es bueno ser explícito en el flujo de trabajo)
         setSelectedScale(nodeToAttach.scaleX());
         setSelectedRotation(nodeToAttach.rotation());
         setSelectedPosition({ x: nodeToAttach.x(), y: nodeToAttach.y() });
@@ -180,59 +174,58 @@ const Editor = ({ model, userImage, userText }) => {
     }
   }, [selectedShapeName]);
 
+  // Manejador de clics en el Stage para deseleccionar objetos o seleccionar la funda
   const handleStageClick = (e) => {
-    // Si el clic es en el Stage o en la imagen de la funda, deseleccionar todo lo demás.
     if (e.target === e.target.getStage() || e.target.name() === "fundaImage") {
       setSelectedShapeName(null);
-      // Muestra los controles de la funda si se hizo clic en ella o en el Stage y no hay nada seleccionado
       setShowFundaControls(
         e.target.name() === "fundaImage" || !selectedShapeName
       );
     }
   };
 
+  // Manejador de clics en la imagen de usuario
   const handleImageClick = (e) => {
-    e.cancelBubble = true; // Evita que el clic se propague al Stage
+    e.cancelBubble = true;
     setSelectedShapeName("userImage");
-    setShowFundaControls(true); // Mostrar controles cuando se selecciona una imagen
+    setShowFundaControls(true);
   };
 
+  // Manejador de clics en el texto de usuario
   const handleTextClick = (e) => {
-    e.cancelBubble = true; // Evita que el clic se propague al Stage
+    e.cancelBubble = true;
     setSelectedShapeName("userText");
-    setShowFundaControls(true); // Mostrar controles cuando se selecciona un texto
+    setShowFundaControls(true);
   };
 
   // --- Manejadores de la funda ---
   const handleFundaMouseEnter = () => {
     setIsFundaHovered(true);
-    fundaKonvaImageRef.current?.getLayer().batchDraw(); // Forzar redibujado para el efecto
+    fundaKonvaImageRef.current?.getLayer().batchDraw();
   };
 
   const handleFundaMouseLeave = () => {
     setIsFundaHovered(false);
-    fundaKonvaImageRef.current?.getLayer().batchDraw(); // Forzar redibujado para el efecto
+    fundaKonvaImageRef.current?.getLayer().batchDraw();
   };
 
   const handleFundaClick = (e) => {
     e.cancelBubble = true;
-    setSelectedShapeName(null); // Deseleccionar cualquier otro objeto
-    setShowFundaControls(true); // Siempre mostrar los controles de funda al hacer clic en ella
-    setIsFundaHovered(false); // Quitar el efecto de hover si se hace clic
+    setSelectedShapeName(null);
+    setShowFundaControls(true);
+    setIsFundaHovered(false);
   };
   // --- Fin manejadores de la funda ---
 
-  // Este manejador es crucial para capturar los cambios del Transformer (escala, rotación, sesgado)
+  // Manejador cuando la transformación (escala, rotación, etc.) termina
   const handleTransformEnd = (e) => {
-    // Cuando el usuario termina de transformar con el mouse/touch, actualizamos los estados.
     setSelectedScale(e.target.scaleX());
     setSelectedRotation(e.target.rotation());
     setSelectedPosition({ x: e.target.x(), y: e.target.y() });
   };
 
-  // Manejador para el evento dragEnd de la imagen/texto
+  // Manejador cuando el arrastre de un objeto termina
   const handleDragEnd = (e) => {
-    // Cuando el usuario termina de arrastrar, actualizamos la posición.
     setSelectedPosition({ x: e.target.x(), y: e.target.y() });
   };
 
@@ -249,29 +242,9 @@ const Editor = ({ model, userImage, userText }) => {
     }
 
     if (node) {
-      // Para escalar desde el centro:
-      // 1. Guardar la posición actual (top-left) del nodo.
-      const oldX = node.x();
-      const oldY = node.y();
-      const oldWidth = node.width() * node.scaleX();
-      const oldHeight = node.height() * node.scaleY();
-
-      // 2. Aplicar la nueva escala.
       node.scale({ x: newScale, y: newScale });
-
-      // 3. Recalcular la nueva posición para que el centro se mantenga
-      //    (nueva_x = centro_original_x - nueva_width/2)
-      //    (nueva_y = centro_original_y - nueva_height/2)
-      const newWidth = node.width() * newScale;
-      const newHeight = node.height() * newScale;
-      const centerX = oldX + oldWidth / 2;
-      const centerY = oldY + oldHeight / 2;
-      node.x(centerX - newWidth / 2);
-      node.y(centerY - newHeight / 2);
-
-      setSelectedPosition({ x: node.x(), y: node.y() }); // Actualizar el estado
       node.getLayer().batchDraw();
-      trRef.current?.update(); // Actualizar el transformer para que refleje los cambios
+      trRef.current?.update();
     }
   };
 
@@ -287,12 +260,9 @@ const Editor = ({ model, userImage, userText }) => {
     }
 
     if (node) {
-      // Para rotar desde el centro del objeto:
-      // Konva automáticamente rota alrededor del centro del bounding box del nodo
-      // cuando no hay offset y el Transformer está conectado.
       node.rotation(newRotation);
       node.getLayer().batchDraw();
-      trRef.current?.update(); // Actualizar el transformer
+      trRef.current?.update();
     }
   };
 
@@ -318,18 +288,16 @@ const Editor = ({ model, userImage, userText }) => {
   const handleClearDesign = () => {
     setUploadedKonvaImage(null);
     setSelectedShapeName(null);
-    setShowFundaControls(false); // Ocultar controles al borrar
+    setShowFundaControls(false);
     setSelectedScale(1);
     setSelectedRotation(0);
-    setSelectedPosition({ x: 0, y: 0 }); // Resetear posición
+    // Resetear posición al centro del stage, ya que x/y representan el centro con offset.
+    setSelectedPosition({ x: STAGE_WIDTH / 2, y: STAGE_HEIGHT / 2 });
 
-    // Para el texto, si lo necesitas borrar permanentemente del stage
     if (userTextNodeRef.current) {
-      userTextNodeRef.current.destroy(); // Elimina el nodo Konva del stage
-      userTextNodeRef.current = null; // Limpia la referencia
+      userTextNodeRef.current.destroy();
+      userTextNodeRef.current = null;
     }
-    // Si userText es un estado de un componente padre, deberías resetearlo allí
-    // por ejemplo, con una prop onClearUserText.
   };
 
   return (
@@ -354,11 +322,13 @@ const Editor = ({ model, userImage, userText }) => {
               image={uploadedKonvaImage}
               x={selectedPosition.x}
               y={selectedPosition.y}
-              width={uploadedKonvaImage.width} // Usar el ancho original
-              height={uploadedKonvaImage.height} // Usar el alto original
+              width={uploadedKonvaImage.width}
+              height={uploadedKonvaImage.height}
               scaleX={selectedScale}
               scaleY={selectedScale}
               rotation={selectedRotation}
+              offsetX={uploadedKonvaImage.width / 2} // Importante: pivote al centro
+              offsetY={uploadedKonvaImage.height / 2} // Importante: pivote al centro
               draggable
               name="userImage"
               onClick={handleImageClick}
@@ -366,9 +336,6 @@ const Editor = ({ model, userImage, userText }) => {
               onTransformEnd={handleTransformEnd}
               onDragEnd={handleDragEnd}
               ref={userImageNodeRef}
-              // IMPORTANT: Konva's Transformer applies transformations from the center
-              // by default if offset is not set.
-              // If you need custom pivot points for manual scaling, consider .offset()
             />
           )}
 
@@ -378,10 +345,20 @@ const Editor = ({ model, userImage, userText }) => {
               text={userText}
               fontSize={30}
               fill="black"
-              // Calcular posición inicial para el texto de forma similar a la imagen
-              // O simplemente iniciar en el centro del stage
-              x={selectedPosition.x + 20} // Esto puede ser un valor inicial fijo o calculado
+              // Posición inicial del texto (puedes ajustar o centrarlo dinámicamente)
+              x={selectedPosition.x + 20}
               y={selectedPosition.y + 20}
+              // Importante: offset dinámico para el texto
+              offsetX={
+                userTextNodeRef.current
+                  ? userTextNodeRef.current.width() / 2
+                  : 0
+              }
+              offsetY={
+                userTextNodeRef.current
+                  ? userTextNodeRef.current.height() / 2
+                  : 0
+              }
               draggable
               name="userText"
               onClick={handleTextClick}
@@ -431,7 +408,7 @@ const Editor = ({ model, userImage, userText }) => {
           }}
         >
           <h4>Opciones de Diseño</h4>
-          {selectedShapeName && ( // Mostrar controles de tamaño/rotación solo si hay un objeto de usuario seleccionado
+          {selectedShapeName && (
             <>
               {/* Controles de Zoom */}
               <div className="control-group">
@@ -460,7 +437,7 @@ const Editor = ({ model, userImage, userText }) => {
                 <span>{selectedRotation}°</span>
               </div>
 
-              {/* Botones de movimiento (simulando flechas) */}
+              {/* Botones de movimiento */}
               <div
                 className="control-group"
                 style={{
