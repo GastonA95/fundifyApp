@@ -1,7 +1,7 @@
 // src/App.js
 import React, { useState } from "react";
 import Selector from "./components/Selector";
-import Editor from "./components/Editor";
+import Editor from "./components/editor";
 import "./App.css";
 
 function App() {
@@ -35,8 +35,6 @@ function App() {
 
   return (
     <div className="app-container">
-      <h1>Editor de Fundas Fundify</h1>
-
       {!selectedModel ? (
         <Selector onModelSelected={setSelectedModel} />
       ) : (
