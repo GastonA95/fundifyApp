@@ -22,6 +22,7 @@ const Editor = ({ model, userImage, userText }) => {
   const userImageNodeRef = useRef(null);
   const userTextNodeRef = useRef(null);
 
+  // Estados para controlar la escala, rotación y posición del objeto seleccionado
   const [selectedScale, setSelectedScale] = useState(1);
   const [selectedRotation, setSelectedRotation] = useState(0);
   const [selectedPosition, setSelectedPosition] = useState({ x: 0, y: 0 });
@@ -29,14 +30,34 @@ const Editor = ({ model, userImage, userText }) => {
   const STAGE_WIDTH = 300;
   const STAGE_HEIGHT = 600;
 
-  // Efecto para cargar la imagen de la funda (la plantilla base)
+  // --- EFECTO PARA CARGAR LA IMAGEN DE LA FUNDA (LA PLANTILLA BASE) ---
   useEffect(() => {
     if (model && model.imagen) {
-      const imageUrl = `${window.location.origin}${model.imagen}`;
+      console.log("DEBUG: model.imagen que llega:", model.imagen);
+
+      // Eliminar "/" inicial si existe
+      const cleanedModelImage = model.imagen.startsWith("/")
+        ? model.imagen.substring(1)
+        : model.imagen;
+
+      console.log("DEBUG: imageName (limpio):", cleanedModelImage);
+
+      // URL construida usando PUBLIC_URL definido en package.json
+      const imageUrl = `${process.env.PUBLIC_URL}/${cleanedModelImage}`;
+
+      console.log(
+        "Konva: Intentando cargar imagen de funda desde (URL usando PUBLIC_URL):",
+        imageUrl
+      );
+
       const img = new window.Image();
       img.crossOrigin = "anonymous";
       img.src = imageUrl;
-      img.onload = () => setFundaImage(img);
+
+      img.onload = () => {
+        console.log("Konva: Imagen de funda cargada exitosamente:", imageUrl);
+        setFundaImage(img);
+      };
       img.onerror = (e) => {
         console.error("Konva: ERROR al cargar imagen de funda:", imageUrl, e);
         setFundaImage(null);
@@ -46,7 +67,7 @@ const Editor = ({ model, userImage, userText }) => {
     }
   }, [model]);
 
-  // Efecto para cargar la imagen subida por el usuario y posicionarla/escalarla
+  // --- EFECTO PARA CARGAR LA IMAGEN SUBIDA POR EL USUARIO Y POSICIONARLA/ESCALARLA ---
   useEffect(() => {
     if (userImage) {
       console.log("Konva: Cargando imagen de usuario desde:", userImage);
@@ -91,14 +112,10 @@ const Editor = ({ model, userImage, userText }) => {
     }
   }, [userImage, selectedShapeName]);
 
-  // Función para calcular las propiedades iniciales de la imagen para que "cubra" el área
+  // --- FUNCIÓN PARA CALCULAR LAS PROPIEDADES INICIALES DE LA IMAGEN DE USUARIO ---
   const calculateInitialImagePropsToCover = (img) => {
-    // Estas son las dimensiones ESTIMADAS del área que la imagen debe cubrir en el Stage.
-    // AJUSTA ESTOS PORCENTAJES (o valores fijos) para que la imagen cubra
-    // el área blanca de tu funda perfectamente al cargar.
-    // Los valores son ejemplos y pueden necesitar ajuste.
-    const caseUsableWidth = STAGE_WIDTH * 1.0; // Usaste 1.0 manualmente, lo mantengo aquí
-    const caseUsableHeight = STAGE_HEIGHT * 1.0; // Usaste 1.0 manualmente, lo mantengo aquí
+    const caseUsableWidth = STAGE_WIDTH * 1.0;
+    const caseUsableHeight = STAGE_HEIGHT * 1.0;
 
     const imageAspectRatio = img.width / img.height;
     const targetAspectRatio = caseUsableWidth / caseUsableHeight;
@@ -106,23 +123,18 @@ const Editor = ({ model, userImage, userText }) => {
     let finalScale;
 
     if (imageAspectRatio > targetAspectRatio) {
-      // La imagen es más ancha que el área objetivo, escalar por altura para cubrir.
       finalScale = caseUsableHeight / img.height;
     } else {
-      // La imagen es más alta que el área objetivo, escalar por ancho para cubrir.
       finalScale = caseUsableWidth / img.width;
     }
 
-    // Centrar la imagen escalada en el centro del STAGE
-    // Ahora que usamos offset para centrar el pivote, las coordenadas x, y
-    // deben ser el centro del stage.
     const x = STAGE_WIDTH / 2;
     const y = STAGE_HEIGHT / 2;
 
     return { scale: finalScale, x, y };
   };
 
-  // Función para escalar y centrar la imagen de la funda (la plantilla)
+  // --- FUNCIÓN PARA ESCALAR Y CENTRAR LA IMAGEN DE LA FUNDA (LA PLANTILLA) ---
   const getFundaImageProps = () => {
     if (!fundaImage) return {};
     const imageAspectRatio = fundaImage.width / fundaImage.height;
@@ -143,16 +155,15 @@ const Editor = ({ model, userImage, userText }) => {
       y: (STAGE_HEIGHT - newHeight) / 2,
       listening: true,
       name: "fundaImage",
-      // Efecto de hover: ligeramente transparente y con un tinte si está en hover
       filters: isFundaHovered ? [window.Konva.Filters.RGBA] : [],
-      red: isFundaHovered ? 150 : 0, // Ajuste de color para el hover
+      red: isFundaHovered ? 150 : 0,
       green: isFundaHovered ? 150 : 0,
       blue: isFundaHovered ? 200 : 0,
-      alpha: isFundaHovered ? 0.6 : 0, // Aumenta la opacidad para que sea más visible
+      alpha: isFundaHovered ? 0.6 : 0,
     };
   };
 
-  // Efecto para adjuntar el Transformer al nodo seleccionado y actualizar los estados
+  // --- EFECTO PARA ADJUNTAR EL TRANSFORMER AL NODO SELECCIONADO ---
   useEffect(() => {
     if (trRef.current) {
       trRef.current.nodes([]);
@@ -174,7 +185,7 @@ const Editor = ({ model, userImage, userText }) => {
     }
   }, [selectedShapeName]);
 
-  // Manejador de clics en el Stage para deseleccionar objetos o seleccionar la funda
+  // --- MANEJADORES DE CLIC ---
   const handleStageClick = (e) => {
     if (e.target === e.target.getStage() || e.target.name() === "fundaImage") {
       setSelectedShapeName(null);
@@ -184,21 +195,19 @@ const Editor = ({ model, userImage, userText }) => {
     }
   };
 
-  // Manejador de clics en la imagen de usuario
   const handleImageClick = (e) => {
     e.cancelBubble = true;
     setSelectedShapeName("userImage");
     setShowFundaControls(true);
   };
 
-  // Manejador de clics en el texto de usuario
   const handleTextClick = (e) => {
     e.cancelBubble = true;
     setSelectedShapeName("userText");
     setShowFundaControls(true);
   };
 
-  // --- Manejadores de la funda ---
+  // --- MANEJADORES DE LA FUNDA ---
   const handleFundaMouseEnter = () => {
     setIsFundaHovered(true);
     fundaKonvaImageRef.current?.getLayer().batchDraw();
@@ -215,21 +224,21 @@ const Editor = ({ model, userImage, userText }) => {
     setShowFundaControls(true);
     setIsFundaHovered(false);
   };
-  // --- Fin manejadores de la funda ---
+  // --- FIN MANEJADORES DE LA FUNDA ---
 
-  // Manejador cuando la transformación (escala, rotación, etc.) termina
+  // Este manejador es crucial para capturar los cambios del Transformer (escala, rotación, sesgado)
   const handleTransformEnd = (e) => {
     setSelectedScale(e.target.scaleX());
     setSelectedRotation(e.target.rotation());
     setSelectedPosition({ x: e.target.x(), y: e.target.y() });
   };
 
-  // Manejador cuando el arrastre de un objeto termina
+  // Manejador para el evento dragEnd de la imagen/texto
   const handleDragEnd = (e) => {
     setSelectedPosition({ x: e.target.x(), y: e.target.y() });
   };
 
-  // --- Manejadores para los sliders de zoom y rotación del objeto seleccionado ---
+  // --- MANEJADORES PARA LOS SLIDERS DE ZOOM Y ROTACIÓN DEL OBJETO SELECCIONADO ---
   const handleSelectedScaleChange = (e) => {
     const newScale = parseFloat(e.target.value);
     setSelectedScale(newScale);
@@ -266,7 +275,7 @@ const Editor = ({ model, userImage, userText }) => {
     }
   };
 
-  // --- Funciones para mover el objeto seleccionado con los botones ---
+  // --- FUNCIONES PARA MOVER EL OBJETO SELECCIONADO CON LOS BOTONES ---
   const moveSelectedObject = (dx, dy) => {
     let node = null;
     if (selectedShapeName === "userImage" && userImageNodeRef.current) {
@@ -284,14 +293,13 @@ const Editor = ({ model, userImage, userText }) => {
     }
   };
 
-  // --- Función para eliminar la imagen y el texto del usuario ---
+  // --- FUNCIÓN PARA ELIMINAR LA IMAGEN Y EL TEXTO DEL USUARIO ---
   const handleClearDesign = () => {
     setUploadedKonvaImage(null);
     setSelectedShapeName(null);
     setShowFundaControls(false);
     setSelectedScale(1);
     setSelectedRotation(0);
-    // Resetear posición al centro del stage, ya que x/y representan el centro con offset.
     setSelectedPosition({ x: STAGE_WIDTH / 2, y: STAGE_HEIGHT / 2 });
 
     if (userTextNodeRef.current) {
@@ -316,7 +324,7 @@ const Editor = ({ model, userImage, userText }) => {
         onClick={handleStageClick}
       >
         <Layer>
-          {/* 1. Imagen subida por el usuario */}
+          {/* 1. IMAGEN SUBIDA POR EL USUARIO */}
           {uploadedKonvaImage && (
             <KonvaImage
               image={uploadedKonvaImage}
@@ -327,8 +335,8 @@ const Editor = ({ model, userImage, userText }) => {
               scaleX={selectedScale}
               scaleY={selectedScale}
               rotation={selectedRotation}
-              offsetX={uploadedKonvaImage.width / 2} // Importante: pivote al centro
-              offsetY={uploadedKonvaImage.height / 2} // Importante: pivote al centro
+              offsetX={uploadedKonvaImage.width / 2}
+              offsetY={uploadedKonvaImage.height / 2}
               draggable
               name="userImage"
               onClick={handleImageClick}
@@ -339,16 +347,14 @@ const Editor = ({ model, userImage, userText }) => {
             />
           )}
 
-          {/* 2. Texto del usuario */}
+          {/* 2. TEXTO DEL USUARIO */}
           {userText && (
             <KonvaText
               text={userText}
               fontSize={30}
               fill="black"
-              // Posición inicial del texto (puedes ajustar o centrarlo dinámicamente)
               x={selectedPosition.x + 20}
               y={selectedPosition.y + 20}
-              // Importante: offset dinámico para el texto
               offsetX={
                 userTextNodeRef.current
                   ? userTextNodeRef.current.width() / 2
@@ -372,7 +378,7 @@ const Editor = ({ model, userImage, userText }) => {
             />
           )}
 
-          {/* 3. Imagen de la funda (siempre al fondo) */}
+          {/* 3. IMAGEN DE LA FUNDA (SIEMPRE AL FONDO) */}
           {fundaImage && (
             <KonvaImage
               {...getFundaImageProps()}
@@ -385,11 +391,11 @@ const Editor = ({ model, userImage, userText }) => {
             />
           )}
 
-          {/* Transformer - Se adjunta al objeto seleccionado */}
+          {/* TRANSFORMER - Se adjunta al objeto seleccionado */}
           <Transformer ref={trRef} />
         </Layer>
       </Stage>
-      {/* Menú de opciones de la funda */}
+      {/* MENÚ DE OPCIONES DE DISEÑO */}
       {showFundaControls && (
         <div
           className="funda-controls-menu"
@@ -437,7 +443,7 @@ const Editor = ({ model, userImage, userText }) => {
                 <span>{selectedRotation}°</span>
               </div>
 
-              {/* Botones de movimiento */}
+              {/* Botones de movimiento (simulando flechas) */}
               <div
                 className="control-group"
                 style={{
